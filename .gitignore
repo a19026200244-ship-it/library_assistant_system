@@ -1,17 +1,41 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
 .venv/
+venv/
 env/
 
-# Secrets
+# Environment / secrets
 .env
+.env.*
+!.env.example
 
-# Cache / logs
+# Cache
 .cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Logs / temp
+*.log
 output.log
 tts_output.mp3
+*.mp3
 
-# Editor
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE / OS
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+
+# Generated data
+data/faiss_library_index/
