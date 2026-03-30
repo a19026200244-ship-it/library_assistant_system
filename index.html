@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能图书馆语音助手</title>
+    <meta name="description" content="桂林电子科技大学智能图书馆语音助手 - 查询图书位置、借阅规则、获取推荐">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Markdown 渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* ========== 1. CSS Reset & 基础变量 ========== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --primary: #4F6AF6;
+            --primary-light: #7B93FF;
+            --primary-dark: #3A50D9;
+            --accent: #00D4AA;
+            --bg-main: #0F1728;
+            --bg-surface: #182136;
+            --bg-card: #1E293B;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+            --border-color: rgba(255, 255, 255, 0.06);
+            --glass-bg: rgba(30, 41, 59, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --user-bubble: linear-gradient(135deg, #4F6AF6, #7B93FF);
+            --bot-bubble: var(--bg-card);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.3);
+            --radius: 16px;
+            --font: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-main);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ========== 2. 顶部导航 ========== */
+        .navbar {
+            background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-card) 100%);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            backdrop-filter: blur(20px);
+        }
+
+        .navbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .navbar .brand i {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .navbar .brand span {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .navbar .version {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(79, 106, 246, 0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(79, 106, 246, 0.25);
+        }
+
+        /* ========== 3. 聊天容器 ========== */
+        .chat-wrapper {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-width: 860px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            scroll-behavior: smooth;
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        /* ========== 4. 消息气泡 ========== */
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            animation: msgFadeIn 0.35s ease-out;
+        }
+
+        .msg-row.user {
+            justify-content: flex-end;
+        }
+
+        .msg-row.bot {
+            justify-content: flex-start;
+        }
+
+        @keyframes msgFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        .msg-row.bot .avatar {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+        }
+
+        .msg-row.user .avatar {
+            background: rgba(79, 106, 246, 0.2);
+            color: var(--primary-light);
+            order: 2;
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: var(--radius);
+            line-height: 1.75;
+            font-size: 0.935rem;
+            position: relative;
+            word-break: break-word;
+        }
+
+        .msg-row.user .bubble {
+            background: var(--user-bubble);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-row.bot .bubble {
+            background: var(--bot-bubble);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* ========== 5. Markdown 渲染样式 ========== */
+        .bubble .md-content p {
+            margin-bottom: 0.6em;
+        }
+
+        .bubble .md-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .bubble .md-content strong {
+            color: #E2E8F0;
+            font-weight: 600;
+        }
+
+        .msg-row.user .bubble .md-content strong {
+            color: #fff;
+        }
+
+        .bubble .md-content em {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+        .bubble .md-content h1,
+        .bubble .md-content h2,
+        .bubble .md-content h3,
+        .bubble .md-content h4,
+        .bubble .md-content h5 {
+            margin: 0.8em 0 0.4em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .bubble .md-content h1 {
+            font-size: 1.15em;
+        }
+
+        .bubble .md-content h2 {
+            font-size: 1.08em;
+        }
+
+        .bubble .md-content h3 {
+            font-size: 1.02em;
+        }
+
+        /* 有序列表 */
+        .bubble .md-content ol {
+            margin: 0.5em 0;
+            padding-left: 0;
+            list-style: none;
+            counter-reset: item-counter;
+        }
+
+        .bubble .md-content ol>li {
+            counter-increment: item-counter;
+            padding: 10px 12px 10px 40px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .bubble .md-content ol>li:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .bubble .md-content ol>li::before {
+            content: counter(item-counter);
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* 无序列表 */
+        .bubble .md-content ul {
+            margin: 0.5em 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .bubble .md-content ul>li {
+            padding: 6px 10px 6px 24px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .bubble .md-content ul>li::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 14px;
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        /* 嵌套列表 */
+        .bubble .md-content li>ul,
+        .bubble .md-content li>ol {
+            margin-top: 0.3em;
+        }
+
+        .bubble .md-content li>ul>li {
+            padding: 3px 8px 3px 20px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .bubble .md-content li>ul>li::before {
+            width: 4px;
+            height: 4px;
+            top: 12px;
+            left: 6px;
+            background: var(--text-muted);
+        }
+
+        /* 代码 */
+        .bubble .md-content code {
+            background: rgba(79, 106, 246, 0.15);
+            color: var(--primary-light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+        }
+
+        .bubble .md-content pre {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0.5em 0;
+            overflow-x: auto;
+        }
+
+        .bubble .md-content pre code {
+            background: none;
+            padding: 0;
+            color: #E2E8F0;
+        }
+
+        /* 引用块 */
+        .bubble .md-content blockquote {
+            border-left: 3px solid var(--primary);
+            padding: 8px 14px;
+            margin: 0.6em 0;
+            background: rgba(79, 106, 246, 0.08);
+            border-radius: 0 8px 8px 0;
+            color: var(--text-secondary);
+        }
+
+        /* 分隔线 */
+        .bubble .md-content hr {
+            border: none;
+            border-top: 1px solid var(--glass-border);
+            margin: 1em 0;
+        }
+
+        /* ========== 6. 书籍卡片 ========== */
+        .books-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 14px 0 6px;
+            margin-top: 10px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .books-scroll::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .books-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .book-card {
+            min-width: 185px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 14px;
+            transition: all 0.25s ease;
+            cursor: default;
+            flex-shrink: 0;
+        }
+
+        .book-card:hover {
+            transform: translateY(-4px);
+            background: rgba(79, 106, 246, 0.08);
+            border-color: rgba(79, 106, 246, 0.25);
+            box-shadow: 0 8px 25px rgba(79, 106, 246, 0.12);
+        }
+
+        .book-card .book-title {
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: var(--primary-light);
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .book-card .book-author {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .book-card .book-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .book-card .book-location {
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .book-card .book-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .book-card .book-status.available {
+            color: #34D399;
+            background: rgba(52, 211, 153, 0.12);
+        }
+
+        .book-card .book-status.unavailable {
+            color: #FB7185;
+            background: rgba(251, 113, 133, 0.12);
+        }
+
+        /* ========== 7. 播放按钮 ========== */
+        .tts-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tts-btn:hover {
+            color: var(--accent);
+            border-color: rgba(0, 212, 170, 0.3);
+            background: rgba(0, 212, 170, 0.06);
+        }
+
+        .tts-btn i {
+            font-size: 0.7rem;
+        }
+
+        /* ========== 8. 加载动画 ========== */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 4px 0;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+
+            30% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+
+        /* ========== 9. 底部输入栏 ========== */
+        .input-bar-wrapper {
+            flex-shrink: 0;
+            padding: 12px 1rem 20px;
+            max-width: 860px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .input-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 6px 8px;
+            box-shadow: var(--shadow-lg);
+            transition: border-color 0.3s;
+        }
+
+        .input-bar:focus-within {
+            border-color: rgba(79, 106, 246, 0.4);
+        }
+
+        .input-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: var(--font);
+            padding: 10px 8px;
+            outline: none;
+        }
+
+        .input-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .btn-mic {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+        }
+
+        .btn-mic:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(79, 106, 246, 0.35);
+        }
+
+        .btn-mic:active {
+            transform: scale(0.95);
+        }
+
+        .btn-send {
+            background: transparent;
+            color: var(--primary-light);
+        }
+
+        .btn-send:hover {
+            background: rgba(79, 106, 246, 0.1);
+        }
+
+        /* 录音状态 */
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .btn-mic.recording {
+            background: linear-gradient(135deg, #EF4444, #F87171);
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        /* ========== 10. 快捷提问 ========== */
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 4px 0 12px;
+        }
+
+        .quick-btn {
+            background: rgba(79, 106, 246, 0.08);
+            border: 1px solid rgba(79, 106, 246, 0.15);
+            color: var(--primary-light);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: var(--font);
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            background: rgba(79, 106, 246, 0.18);
+            border-color: rgba(79, 106, 246, 0.35);
+            transform: translateY(-1px);
+        }
+
+        /* ========== 11. 响应式 ========== */
+        @media (max-width: 640px) {
+            .navbar {
+                padding: 0.75rem 1rem;
+            }
+
+            .navbar .brand span {
+                font-size: 1rem;
+            }
+
+            .bubble {
+                max-width: 88%;
+                font-size: 0.88rem;
+                padding: 12px 14px;
+            }
+
+            .avatar {
+                width: 30px;
+                height: 30px;
+                font-size: 0.75rem;
+            }
+
+            .book-card {
+                min-width: 160px;
+            }
+
+            .quick-actions {
+                gap: 6px;
+            }
+
+            .quick-btn {
+                font-size: 0.72rem;
+                padding: 5px 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="brand">
+            <i class="fas fa-book-reader"></i>
+            <span>桂林电子科技大学智能图书馆</span>
+        </div>
+        <div class="version">
+            <i class="fas fa-robot" style="margin-right:4px;"></i>
+            语音助手 v2.0
+        </div>
+    </nav>
+
+    <!-- 主交互区 -->
+    <div class="chat-wrapper">
+        <div id="chat-box" class="chat-container">
+            <!-- 欢迎消息 -->
+            <div class="msg-row bot">
+                <div class="avatar"><i class="fas fa-robot"></i></div>
+                <div class="bubble">
+                    <div class="md-content">
+                        <p>👋 你好！我是图书馆智能助手。</p>
+                        <p>你可以问我关于<strong>图书查询</strong>、<strong>借阅规则</strong>、<strong>图书推荐</strong>等问题，点击下方麦克风即可语音提问。
+                        </p>
+                    </div>
+                    <!-- 快捷提问 -->
+                    <div class="quick-actions" style="margin-top: 12px;">
+                        <button class="quick-btn" onclick="sendMessage('算法图解在哪里？')">📖 算法图解在哪？</button>
+                        <button class="quick-btn" onclick="sendMessage('图书馆几点开门？')">🕐 开馆时间</button>
+                        <button class="quick-btn" onclick="sendMessage('推荐一些计算机方面的书')">💻 计算机推荐</button>
+                        <button class="quick-btn" onclick="sendMessage('怎么办借书证？')">🪪 办理借书证</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部输入栏 -->
+        <div class="input-bar-wrapper">
+            <div class="input-bar">
+                <button id="mic-btn" class="btn-circle btn-mic" title="点击录音">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <input id="user-input" type="text" placeholder="输入问题或点击麦克风说话..." autocomplete="off">
+                <button id="send-btn" class="btn-circle btn-send" title="发送">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  初始化
+        // ============================================================
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const micBtn = document.getElementById('mic-btn');
+
+        let chatHistory = [];
+
+        // 配置 marked（Markdown 解析器）
+        marked.setOptions({
+            breaks: true,           // 换行符 → <br>
+            gfm: true,              // GitHub 风味
+            smartypants: true,      // 智能标点
+        });
+
+        // ============================================================
+        //  核心：发送消息
+        // ============================================================
+        async function sendMessage(text) {
+            if (!text.trim()) return;
+
+            // 1. 展示用户消息
+            appendMessage('user', text);
+            userInput.value = '';
+
+            // 2. 展示加载状态
+            const loadingId = showTyping();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, history: chatHistory })
+                });
+                const data = await response.json();
+
+                // 3. 移除加载 → 展示回答
+                removeElement(loadingId);
+                appendMessage('bot', data.answer, data.books);
+
+                // 4. 更新历史
+                chatHistory.push({ role: 'user', content: text });
+                chatHistory.push({ role: 'assistant', content: data.answer });
+
+            } catch (err) {
+                removeElement(loadingId);
+                appendMessage('bot', '⚠️ 抱歉，服务器连接失败，请检查后端是否已启动。');
+            }
+        }
+
+        // ============================================================
+        //  UI：添加消息气泡
+        // ============================================================
+        function appendMessage(role, content, books = []) {
+            const row = document.createElement('div');
+            row.className = `msg-row ${role}`;
+
+            // 头像
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerHTML = role === 'bot'
+                ? '<i class="fas fa-robot"></i>'
+                : '<i class="fas fa-user"></i>';
+
+            // 气泡
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            if (role === 'user') {
+                // 用户消息：纯文本即可
+                bubble.innerHTML = `<div class="md-content"><p>${escapeHtml(content)}</p></div>`;
+            } else {
+                // Bot 消息：用 marked 渲染 Markdown
+                const htmlContent = renderMarkdown(content);
+                bubble.innerHTML = `<div class="md-content">${htmlContent}</div>`;
+
+                // 书籍卡片区
+                if (books && books.length > 0) {
+                    bubble.appendChild(createBooksCards(books));
+                }
+
+                // TTS 播放按钮
+                const ttsBtn = document.createElement('button');
+                ttsBtn.className = 'tts-btn';
+                ttsBtn.innerHTML = '<i class="fas fa-volume-up"></i> 朗读';
+                ttsBtn.onclick = () => speak(content);
+                bubble.appendChild(ttsBtn);
+            }
+
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            chatBox.appendChild(row);
+            scrollToBottom();
+        }
+
+        // ============================================================
+        //  Markdown 渲染
+        // ============================================================
+        function renderMarkdown(text) {
+            if (!text) return '';
+            // 把 Markdown 渲染成 HTML
+            let html = marked.parse(text);
+            return html;
+        }
+
+        // 纯文本（用于 TTS）：去掉 Markdown 记号
+        function stripMarkdown(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '$1')
+                .replace(/\*(.*?)\*/g, '$1')
+                .replace(/#{1,6}\s?/g, '')
+                .replace(/`{1,3}[^`]*`{1,3}/g, '')
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .replace(/[>\-·•]\s?/g, '')
+                .replace(/\n{2,}/g, '\n')
+                .trim();
+        }
+
+        // ============================================================
+        //  书籍卡片
+        // ============================================================
+        function createBooksCards(books) {
+            const container = document.createElement('div');
+            container.className = 'books-scroll';
+
+            books.forEach(b => {
+                const isAvailable = b.status === '在馆';
+                const card = document.createElement('div');
+                card.className = 'book-card';
+                card.innerHTML = `
+                    <div class="book-title">${escapeHtml(b.title || '')}</div>
+                    <div class="book-author">${escapeHtml(b.author || '')}</div>
+                    <div class="book-meta">
+                        <span class="book-location">${escapeHtml(b.location || '')}</span>
+                        <span class="book-status ${isAvailable ? 'available' : 'unavailable'}">${escapeHtml(b.status || '')}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            return container;
+        }
+
+        // ============================================================
+        //  加载动画
+        // ============================================================
+        function showTyping() {
+            const id = 'loading-' + Date.now();
+            const row = document.createElement('div');
+            row.className = 'msg-row bot';
+            row.id = id;
+            row.innerHTML = `
+                <div class="avatar"><i class="fas fa-robot"></i></div>
+                <div class="bubble">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatBox.appendChild(row);
+            scrollToBottom();
+            return id;
+        }
+
+        // ============================================================
+        //  工具函数
+        // ============================================================
+        function escapeHtml(text) {
+            const el = document.createElement('span');
+            el.textContent = text;
+            return el.innerHTML;
+        }
+
+        function removeElement(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        // ============================================================
+        //  语音功能 A：识别 (STT)
+        // ============================================================
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (Recognition) {
+            const recognition = new Recognition();
+            recognition.lang = 'zh-CN';
+            recognition.interimResults = false;
+
+            micBtn.onclick = () => {
+                recognition.start();
+                micBtn.classList.add('recording');
+            };
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                sendMessage(text);
+            };
+
+            recognition.onend = () => micBtn.classList.remove('recording');
+            recognition.onerror = () => micBtn.classList.remove('recording');
+        } else {
+            micBtn.title = '当前浏览器不支持语音识别';
+            micBtn.style.opacity = '0.4';
+        }
+
+        /**
+         * 语音功能 B：播报 (TTS)
+         * 改为使用后端的 /api/tts 接口
+         */
+        let currentAudio = null;
+        function speak(text) {
+            if (!text) return;
+
+            // 1. 停止当前正在播放的音频
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+
+            const cleanText = stripMarkdown(text);
+            
+            // 2. 发起 POST 请求获取音频
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: cleanText })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("TTS 请求失败");
+                return response.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                currentAudio = new Audio(url);
+                currentAudio.play();
+                console.log("正在通过 Edge-TTS 播放...");
+            })
+            .catch(err => {
+                console.error("音频处理出错:", err);
+            });
+        }
+
+        // ============================================================
+        //  事件绑定
+        // ============================================================
+        sendBtn.onclick = () => sendMessage(userInput.value);
+        userInput.onkeypress = (e) => {
+            if (e.key === 'Enter') sendMessage(userInput.value);
+        };
+    </script>
+</body>
+
+</html>

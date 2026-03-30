@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  library-assistant:
+    build: .
+    container_name: library_assistant_container
+    ports:
+      - "8000:8000"
+    environment:
+      # 在运行 docker-compose 时，将从项目的 .env 文件加载环境变量
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    volumes:
+      # 可选：将本地数据文件夹挂载到容器中，以便动态更新
+      - ./data:/app/data
+    restart: always

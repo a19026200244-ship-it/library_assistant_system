@@ -1,0 +1,25 @@
+# 智能图书馆语音助手 - Python 依赖
+# 安装方式: pip install -r requirements.txt
+
+# LLM 调用
+openai>=1.0.0
+
+# RAG 相关
+langchain-community>=0.2.0
+langchain-huggingface>=0.0.3
+langchain-text-splitters>=0.2.0
+faiss-cpu>=1.7.0              # 有 GPU 可替换为 faiss-gpu
+
+# Embedding 模型
+sentence-transformers>=2.2.0
+
+# TTS 语音合成
+edge-tts>=6.1.0
+pygame>=2.5.0
+
+# Web 接口 (FastAPI)
+fastapi>=0.110.0
+uvicorn>=0.20.0
+
+# 其他已选
+gradio>=4.44.0

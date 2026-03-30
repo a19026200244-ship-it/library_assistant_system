@@ -1,0 +1,28 @@
+# 忽略虚拟环境
+venv/
+.venv/
+env/
+
+# 忽略 Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略 IDE 和本地配置文件
+.vscode/
+.idea/
+.env
+.gitignore
+*.log
+
+# 忽略临时文件
+tts_output.mp3
+tts_*.mp3
+.temp/
+.brain/
+.gemini/
+
+# 忽略数据构建过程中的临时文件
+faiss_library_index/
+!data/faiss_library_index/
