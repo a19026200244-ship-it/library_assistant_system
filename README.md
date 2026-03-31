@@ -1,35 +1,42 @@
 # 智能图书馆助手系统
 
-一个面向校园图书馆场景的智能问答助手，基于 `FastAPI`、`DeepSeek`、`LangChain`、`FAISS` 和原生 `HTML/CSS/JavaScript` 构建，支持图书查询、馆内规则问答、多轮对话记忆和语音交互。
+一个面向校园图书馆场景的智能问答与语音交互系统，基于 `FastAPI`、`DeepSeek`、`LangChain` 和 `FAISS` 构建，支持图书检索、馆内规则问答、多轮对话记忆、语音交互与 Web 演示。
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-LLM-4D6BFE)](https://www.deepseek.com/)
+[![LangChain](https://img.shields.io/badge/LangChain-RAG-1C3C3C?logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![FAISS](https://img.shields.io/badge/FAISS-Vector_Search-0467DF)](https://github.com/facebookresearch/faiss)
+[![Frontend](https://img.shields.io/badge/Frontend-HTML%20%2B%20CSS%20%2B%20JS-E34F26?logo=html5&logoColor=white)](https://developer.mozilla.org/)
+[![Status](https://img.shields.io/badge/Status-Demo-success)]()
+
+## 项目亮点
+
+- 支持图书位置、作者、分类和借阅状态查询
+- 支持开放时间、借阅规则、楼层分布等馆内知识问答
+- 集成 `RAG + FAISS` 语义检索，提高问答准确率
+- 支持多轮对话记忆，可理解“它”“那本书”等连续追问
+- 支持浏览器语音输入与后端 TTS 语音播报
+- 提供原生 `HTML + CSS + JavaScript` Web 界面，方便演示和测试
 
 ## 项目简介
 
-本项目将图书馆常见问答场景拆分为两类能力：
+本项目将图书馆问答场景拆分为两类能力：
 
-- 结构化检索：基于 `library_books.json` 查询图书名称、作者、分类、位置和借阅状态。
-- 语义检索（RAG）：基于 `library_knowledge.txt` 构建向量知识库，回答开放时间、借阅规则、楼层分布等问题。
+- 结构化检索：基于 `data/library_books.json` 查询图书名称、作者、分类、位置和借阅状态
+- 语义检索（RAG）：基于 `data/library_knowledge.txt` 构建向量知识库，回答开放时间、借阅规则、楼层信息等问题
 
 系统通过大模型的工具调用能力自动判断用户意图，并选择合适的检索方式生成自然语言回复。
-
-## 功能特性
-
-- 图书位置查询：支持按书名或作者模糊查询。
-- 分类与状态查询：支持按分类、主题、在馆状态筛选图书。
-- 图书推荐：根据兴趣关键词返回推荐书单。
-- 图书馆规则问答：通过 RAG 回答馆内制度、开放时间、楼层信息等问题。
-- 多轮对话记忆：保留最近若干轮会话上下文，支持“它”“那本书”等追问。
-- Web 页面交互：提供原生 `HTML + CSS + JS` 聊天界面，方便演示与测试。
-- 语音功能：支持浏览器语音识别和后端 TTS 音频合成播放。
 
 ## 技术栈
 
 - 后端：`Python`、`FastAPI`、`Uvicorn`
 - 大模型：`DeepSeek`（OpenAI 兼容接口）
-- Agent：大模型 Function Calling
+- Agent：Function Calling
 - RAG：`LangChain`、`HuggingFace Embeddings`、`FAISS`
 - 前端：`HTML`、`CSS`、`JavaScript`
 - 语音：浏览器 `SpeechRecognition`、`Edge-TTS`
-- 数据：
+- 数据源：
   - `data/library_books.json`
   - `data/library_knowledge.txt`
   - `data/faiss_library_index/`
@@ -54,21 +61,40 @@ library_assistant_system/
    └─ faiss_library_index/    # 向量检索索引
 ```
 
-## 核心工作流程
+## 核心能力
 
 ### 1. 图书查询
 
-用户提问后，Agent 会调用结构化查询工具，从 `library_books.json` 中检索相关图书信息，并返回位置、作者、分类和借阅状态。
+系统支持按书名、作者、分类和状态进行结构化检索，适合处理：
+
+- `《算法导论》在哪？`
+- `推荐几本计算机方面的书`
+- `哪些书已经被借出了？`
 
 ### 2. RAG 规则问答
 
-项目先通过 `ingest.py` 对 `library_knowledge.txt` 进行切片、向量化并构建 `FAISS` 索引。用户提问时，系统会从向量库中检索最相关的文本片段，再交给大模型组织自然语言答案。
+项目通过 `ingest.py` 对 `library_knowledge.txt` 进行切片、向量化并构建 `FAISS` 索引。用户提问时，系统先从向量库中检索最相关的文本片段，再交给大模型组织自然语言答案。
+
+适合处理：
+
+- `图书馆几点关门？`
+- `借书可以续借吗？`
+- `3 楼有什么？`
 
 ### 3. 多轮对话记忆
 
-系统会保留最近若干轮对话历史，并在每次请求时将历史消息与当前问题一起发送给模型，因此助手可以理解连续追问和代词指代。
+系统会保留最近若干轮对话历史，并在每次请求时将历史消息与当前问题一同发送给模型，因此助手可以理解连续追问和代词指代。
 
-## 本地运行
+示例：
+
+```text
+用户：算法导论在哪？
+助手：在 3 楼 L3-C01 架。
+用户：那它的作者是谁？
+助手：它的作者是科曼。
+```
+
+## 快速开始
 
 ### 1. 克隆项目
 
@@ -101,8 +127,6 @@ pip install -r requirements.txt
 
 ### 4. 配置环境变量
 
-先复制示例文件：
-
 Windows PowerShell：
 
 ```powershell
@@ -115,11 +139,15 @@ macOS / Linux：
 cp .env.example .env
 ```
 
-然后在 `.env` 中填写你的 `DEEPSEEK_API_KEY`。
+然后在 `.env` 中填写：
 
-### 5. 检查 Embedding 设备
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+```
 
-如果本机没有 GPU，请将 `config.py` 中的 `EMBEDDING_DEVICE` 修改为：
+### 5. 配置 Embedding 设备
+
+如果本机没有 GPU，请在 `config.py` 中设置：
 
 ```python
 EMBEDDING_DEVICE = "cpu"
@@ -143,7 +171,7 @@ data/faiss_library_index/
 python app.py
 ```
 
-启动成功后访问：
+浏览器访问：
 
 ```text
 http://localhost:8000
@@ -163,16 +191,6 @@ http://localhost:8000
 {
   "message": "算法导论在哪？",
   "history": []
-}
-```
-
-返回示例：
-
-```json
-{
-  "answer": "《算法导论》在 3 楼 L3-C01 架。",
-  "tool_results": [],
-  "books": []
 }
 ```
 
@@ -216,21 +234,21 @@ docker-compose up -d --build
 http://localhost:8000
 ```
 
-更多部署说明可查看 `README_DEPLOY.md`。
+更多部署细节可查看 `README_DEPLOY.md`。
 
 ## 注意事项
 
-- `data/faiss_library_index/` 为生成文件，可通过 `python ingest.py` 重新构建。
-- 浏览器语音识别依赖 `SpeechRecognition`，推荐使用新版 Chrome 或 Edge。
-- 如首次加载 Embedding 模型较慢，属于正常现象。
-- 请勿将真实 API Key 提交到 GitHub。
+- `data/faiss_library_index/` 为生成文件，可通过 `python ingest.py` 重新构建
+- 浏览器语音识别依赖 `SpeechRecognition`，推荐使用新版 Chrome 或 Edge
+- 首次加载 Embedding 模型较慢属于正常现象
+- 请勿将真实 API Key 提交到 GitHub
 
 ## 后续可扩展方向
 
-- 将书籍数据也纳入向量检索，实现更强的语义搜书。
-- 增加用户登录与长期会话记忆。
-- 增加借阅状态联动与数据库持久化。
-- 将前端静态资源拆分为 `css` 和 `js` 文件，进一步规范工程结构。
+- 将书籍数据也纳入向量检索，实现更强的语义搜书
+- 增加用户登录与长期会话记忆
+- 增加借阅状态联动与数据库持久化
+- 将前端静态资源拆分为独立 `css` 和 `js` 文件，进一步规范工程结构
 
 ## License
 
